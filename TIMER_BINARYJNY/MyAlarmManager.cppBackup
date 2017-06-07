@@ -1,0 +1,149 @@
+/*
+ * MyAlarmManager
+ */
+ 
+ 
+#include <MyAlarmManager.h>
+#include "Arduino.h"
+#include <EEPROM.h>
+
+
+
+MyAlarmManager::MyAlarmManager(int _firstAlarmAddress){
+	firstAlarmAddress = _firstAlarmAddress;
+	
+	for(int i=0; i<ALARMS_AMOUNT; i++){
+		//for(int j=0; j<2; j++){		//pętla wykomentowana z powodu optymalizacji rozmiaru programu
+			//alarmTab[i][j] = 0;
+			alarmTab[i][0] = 0;
+			alarmTab[i][1] = 0;
+		//}
+	}
+}
+	
+void MyAlarmManager::updateAlarms(byte minute, byte hour, byte weekDay, byte day, byte month, byte year){
+	bool error = false;
+	bool cycled = false;
+	byte currentAlarm[ALARM_BYTE_SIZE];
+	
+	for(int currentAlarmAddres = firstAlarmAddress ;
+		currentAlarmAddres < (ALARMS_AMOUNT * ALARM_BYTE_SIZE) + firstAlarmAddress ;
+		currentAlarmAddres += ALARM_BYTE_SIZE){
+		
+		error = false;
+		cycled = false;
+		
+		currentAlarm[A_ON_OFF]=	EEPROM.read(currentAlarmAddres+A_ON_OFF);
+		currentAlarm[A_HOUR]=	EEPROM.read(currentAlarmAddres+A_HOUR);
+		currentAlarm[A_MINUTE]=	EEPROM.read(currentAlarmAddres+A_MINUTE);
+		currentAlarm[A_CYCLE]=	EEPROM.read(currentAlarmAddres+A_CYCLE);
+		currentAlarm[A_NAP]=	EEPROM.read(currentAlarmAddres+A_NAP);
+		currentAlarm[A_YEAR]=	EEPROM.read(currentAlarmAddres+A_YEAR);
+		currentAlarm[A_MONTH]=	EEPROM.read(currentAlarmAddres+A_MONTH);
+		currentAlarm[A_DAY]=	EEPROM.read(currentAlarmAddres+A_DAY);
+		
+		
+			
+			
+			if(currentAlarm[A_HOUR]>=0 && currentAlarm[A_HOUR]<24){
+				
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_MINUTE]>=0 && currentAlarm[A_MINUTE]<60){
+				
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_CYCLE]!=128){
+				cycled = true;
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_NAP]>0){
+				
+			}else{
+				//continue;
+			}
+			
+			if(currentAlarm[A_YEAR]>=0 && currentAlarm[A_YEAR]<100){
+				
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_MONTH]>0 && currentAlarm[A_MONTH]<13){
+				
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_DAY]>0 && currentAlarm[A_DAY]<32){
+				
+			}else{
+				error = true;
+			}
+			
+			if(currentAlarm[A_ON_OFF]>0 && error == false;){
+				
+				if (cycled == true){
+				
+				}else{
+				}
+				
+			}else{
+				continue;
+			}
+			
+		
+		
+	}
+
+}
+
+//void MyAlarmManager::updateAlarms(byte minute, byte hour, byte weekDay, byte day, byte month, byte year){
+//
+//}
+
+byte MyAlarmManager::checkAlarms(byte minute, byte hour){
+
+}
+
+bool MyAlarmManager::isAlarmActive(){
+
+}
+
+byte MyAlarmManager::getFirstActiveAlarm(){
+
+}
+
+//byte[ALARM_AMOUNT][2] MyAlarmManager::getAlarms(){
+//
+//}
+
+//byte[2] MyAlarmManager::getActiveAlarmByIndex(byte index){
+//
+//}
+
+/////////////////////////
+///////  PRIVATE  ///////
+/////////////////////////
+
+void MyAlarmManager::clearSingleEepromAlarm(int alarmIndex){
+
+}
+
+void MyAlarmManager::loadAlarmFromEepromByAddress_Pocedure(int address){
+
+}
+
+bool MyAlarmManager::isLoadAlarmValid_Pocedure(int address){
+
+}
+
+//byte[ALARM_BYTE_SIZE] void MyAlarmManager::loadAlarmFromEepromByIndex(int index){
+//
+//}
