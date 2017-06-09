@@ -133,9 +133,13 @@ byte state= STATE_SHOW_TIMER;
 boolean blinkerFlag = true;
 
 int refresh_interval=1000;
-unsigned long previousMillis=0;
-unsigned long previousSoundMillis=0;
-unsigned long currentSoundMillis=0;
+unsigned long currentMillis 	=0;
+unsigned long previousMillis	=0;
+unsigned long previousSoundMillis	=0;
+unsigned long currentSoundMillis	=0;
+unsigned long previousAlarmMillis	=0;
+unsigned long currentAlarmMillis	=0;
+
 
 //podłączamy analog 4 - A4 do SDA (15 nóżka)
 //podłączamy analog 5 - A5 do SCL (14 nóżka)
@@ -167,10 +171,10 @@ byte testTab[8]={1,2,4,8,16,32,64,128};
 
 MyAlarmManager alarmManager(ALARM_FIRST_ADDRESS);
 
-byte activeAlarmIndex =0;
+byte alarmIndex =0;
+byte activeAlarmIndex=0; // 0- no active alarms
 
-
-byte oldMinut=0;
+byte oldMinute=0;
 byte oldHour=0;
 byte oldDay=0;
 
@@ -218,7 +222,7 @@ void setup() {
 
   
 
-oldMinut= rtc.getMinute();
+oldMinute= rtc.getMinute();
 oldHour = rtc.getHour();
 oldDay  = rtc.getDay();
 
@@ -239,8 +243,10 @@ oldDay  = rtc.getDay();
 
 void loop() {
 
-  unsigned long currentMillis = millis();
+  //unsigned long currentMillis = millis();
+  currentMillis = millis();
   currentSoundMillis = millis();
+  currentAlarmMillis = millis();
 
 
 
@@ -267,7 +273,7 @@ void loop() {
           }
           if(state = STATE_SHOW_ALARMS){
             if(!buzzer.isMuted()) buzzer.playBuzzerBip(750,30);
-            activeAlarmIndex = changeActiveAlarmIndex(activeAlarmIndex, -1);
+            alarmIndex = changealarmIndex(alarmIndex, -1);
           }
           break;
           
@@ -283,12 +289,16 @@ void loop() {
           }
           if(state = STATE_SHOW_ALARMS){
             if(!buzzer.isMuted()) buzzer.playBuzzerBip(1000,30);
-            activeAlarmIndex = changeActiveAlarmIndex(activeAlarmIndex, 1);
+            alarmIndex = changealarmIndex(alarmIndex, 1);
           }
           break;
           
         case REMOTE_PLAY_PAUSE:
-          if( state==STATE_SHOW_TIMER ){
+		  if(state==STATE_RUN_ALARM){
+            if(!buzzer.isMuted()) buzzer.playShowTimerSound();
+            alarmManager.stopAlarmByIndex( alarmManager.checkAlarms(rtc.getMinute(), rtc.getHour()) );
+			state=STATE_SHOW_TIMER;
+          }else if( state==STATE_SHOW_TIMER ){
             state = STATE_PLAY_ANIMATION;
             buzzer.unmute();
             if(!buzzer.isMuted()) buzzer.playInitializeAnimationenSound();
@@ -334,6 +344,7 @@ void loop() {
           if( state==STATE_SET_TIME ){
             if(!buzzer.isMuted()) buzzer.playShowTimerSound();
             state = STATE_SHOW_TIMER;
+			alarmManager.checkAlarms(rtc.getMinute(), rtc.getHour());
           }else if(state==STATE_SHOW_TIMER){
             if(!buzzer.isMuted()) buzzer.playSetTimeSound();
             state = STATE_SET_TIME;
@@ -373,6 +384,8 @@ void loop() {
           if( state==STATE_EDIT_MEMORY ){
             if(!buzzer.isMuted()) buzzer.playShowTimerSound();
             state = STATE_SHOW_TIMER;
+			alarmManager.updateAlarms(rtc.getMinute(), rtc.getHour(), rtc.getWeekday(), rtc.getDay(), rtc.getMonth(), rtc.getYear());
+			alarmManager.checkAlarms(rtc.getMinute(), rtc.getHour());
           }else if(state==STATE_SHOW_TIMER){
             if(!buzzer.isMuted()) buzzer.playEditMemorySound();
             state = STATE_EDIT_MEMORY;
@@ -510,6 +523,8 @@ void loop() {
           }else if(state==STATE_SET_DATE){
             if(!buzzer.isMuted()) buzzer.playShowTimerSound();
             state = STATE_SHOW_TIMER;
+			alarmManager.updateAlarms(rtc.getMinute(), rtc.getHour(), rtc.getWeekday(), rtc.getDay(), rtc.getMonth(), rtc.getYear());
+			alarmManager.checkAlarms(rtc.getMinute(), rtc.getHour());
           }
           break; 
 
@@ -644,9 +659,9 @@ void loop() {
     if ((unsigned long)(currentMillis - previousMillis) >= (refresh_interval/10)) {
       
       pcfController.showTime( 
-        activeAlarmIndex,
-        alarmManager.getActiveAlarmHourByIndex(activeAlarmIndex),
-        alarmManager.getActiveAlarmMinuteByIndex(activeAlarmIndex)
+        alarmIndex,
+        alarmManager.getActiveAlarmHourByIndex(alarmIndex),
+        alarmManager.getActiveAlarmMinuteByIndex(alarmIndex)
       );
         
         mcp41controll.setToCurrentBrightness(analogRead(PHOTO_SENSOR_PIN));
@@ -654,22 +669,70 @@ void loop() {
       previousMillis = currentMillis;
     }
     
+  //////////////////////////////////////////
+  //////////  STATE_RUN_ALARM   //////////
+  }else if( state == STATE_RUN_ALARM ){
+    if ((unsigned long)(currentSoundMillis - previousSoundMillis) >= buzzerInterval){
+            buzzer.playAnimationenBip();
+      previousSoundMillis = currentSoundMillis;
+    }
+    
+    if ((unsigned long)(currentMillis - previousMillis) >= animationSpeed) {
+      
+        animationStep = pcfController.playAnimationen(animationStep);
+        if( animationStep%4 ==0 && buzzerInterval>=1){
+          buzzerInterval = buzzerInterval/2;
+        }
+        
+        if(animationStep >=30){
+          state=STATE_SHOW_TIMER;
+          if(!buzzer.isMuted()) buzzer.playShowTimerSound();
+        }
+        
+      // Use the snapshot to set track time until next event  
+      previousMillis = currentMillis;
  
+    }
   }
-
+  
+	/////////// ALARM CHECKING /////////////
+	
+	if ((unsigned long)(currentAlarmMillis - previousAlarmMillis) >= refresh_interval*60) {
+		//byte newHour = ;
+		
+		if(oldDay!=rtc.getDay()){
+			oldDay=rtc.getDay();
+			alarmManager.updateAlarms(rtc.getMinute(), rtc.getHour(), rtc.getWeekday(), rtc.getDay(), rtc.getMonth(), rtc.getYear());
+		}
+		alarmManager.checkAlarms(rtc.getMinute(), rtc.getHour());
+		
+		previousAlarmMillis = currentAlarmMillis;
+    }
+	
+	if(state != STATE_RUN_ALARM){
+		if(alarmManager.isAlarmActive()){
+			state=STATE_RUN_ALARM;
+			buzzer.unmute();
+            initializeAnimation();  // BYYYYRZYDYYYKOOOO!
+            pcfController.initializeAnimationen();
+		}
+	}
+	
 /*
 sprawdzanie czy nie ma alarmu:
 -co minutę
--po zmianie godziny
+-po zakończeniu edycji czasu
+//-po zmianie godziny
 
 odswierzenie listy alarmów
 -po zakończeniu edycji eepromu
+-po zakończeniu edycji daty
 -po zmianie daty
--po 24 godzinach
+//-po 24 godzinach
 
 
 */
-
+	///////// END ALARM CHECKING ///////////
 }//end main loop
 
 
@@ -708,7 +771,7 @@ byte changeTimerIndex(byte _index, int value){
   }
 }
 
-byte changeActiveAlarmIndex(byte _index, int value){ 
+byte changealarmIndex(byte _index, int value){ 
   if( (_index+value) > ALARMS_AMOUNT ){
     return 0;
   }else if( (_index+value) < 0 ){
